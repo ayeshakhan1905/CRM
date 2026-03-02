@@ -4,7 +4,7 @@ const Note = require("../models/noteModel");
 const {buildSearchQuery} = require("../utils/buildSearchQueries")
 
 // @desc Create new customer
-const createCustomer = async (req, res) => {
+const createCustomer = async (req, res, next) => {
   try {
     const { name, email, phone, company, location } = req.body;
 
@@ -20,12 +20,12 @@ const createCustomer = async (req, res) => {
     res.locals.newEntityId = customer._id;
     res.status(201).json(customer);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc Get all customers (admin gets all, user gets own)
-const getCustomers = async (req, res) => {
+const getCustomers = async (req, res, next) => {
   try {
     // Restrict non-admin users
     // console.log("hello");
@@ -56,13 +56,13 @@ const getCustomers = async (req, res) => {
 
     res.json(customersWithLinks);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 
 // @desc Get single customer
-const getCustomerById = async (req, res) => {
+const getCustomerById = async (req, res, next) => {
   try {
     const customer = await Customer.findById(req.params.id)
       .populate("createdBy", "name email");
@@ -79,12 +79,12 @@ const getCustomerById = async (req, res) => {
 
     res.json({ ...customer.toObject(), tasks, notes });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc Update customer
-const updateCustomer = async (req, res) => {
+const updateCustomer = async (req, res, next) => {
   try {
     const customer = await Customer.findByIdAndUpdate(
       req.params.id,
@@ -96,12 +96,12 @@ const updateCustomer = async (req, res) => {
 
     res.json(customer);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc Delete customer
-const deleteCustomer = async (req, res) => {
+const deleteCustomer = async (req, res, next) => {
   try {
     const customer = await Customer.findByIdAndDelete(req.params.id);
 
@@ -113,7 +113,7 @@ const deleteCustomer = async (req, res) => {
 
     res.json({ message: "Customer and related tasks/notes deleted successfully" });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 

@@ -6,6 +6,9 @@ const logSchema = new mongoose.Schema({
   entityType: { type: String, required: true },   // Lead, Deal, Task, Note, Customer
   entityId: { type: mongoose.Schema.Types.ObjectId, required: true },
   details: { type: String },                      // optional description
+  method: { type: String },                        // HTTP verb
+  url: { type: String },                           // endpoint accessed
+  ip: { type: String },                            // origin IP
   createdAt: { type: Date, default: Date.now }
 });
 

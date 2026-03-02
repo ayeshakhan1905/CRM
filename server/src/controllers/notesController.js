@@ -42,6 +42,14 @@ exports.createNote = async (req, res) => {
       return res.status(404).json({ message: `${normalizedModel} not found` });
     }
 
+    // enforce ownership: non-admin users may only add notes to their own entities
+    if (req.user.role !== 'admin') {
+      // most parent documents have a `createdBy` field
+      if (parentDoc.createdBy && parentDoc.createdBy.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'Forbidden: cannot add note to entity you do not own' });
+      }
+    }
+
     // Create note
     const note = await Note.create({
       content,

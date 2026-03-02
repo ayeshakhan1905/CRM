@@ -10,10 +10,7 @@ const {
 } = require('../controllers/notificationController');
 const protect = require('../middleware/protect');
 
-router.route('/')
-  .get(protect, getNotifications)
-  .post(protect, createNotification);
-
+// Special routes must come before parameterized routes
 router.route('/unread-count')
   .get(protect, getUnreadCount);
 
@@ -22,6 +19,10 @@ router.route('/mark-all-read')
 
 router.route('/:id/read')
   .put(protect, markAsRead);
+
+router.route('/')
+  .get(protect, getNotifications)
+  .post(protect, createNotification);
 
 router.route('/:id')
   .delete(protect, deleteNotification);

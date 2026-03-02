@@ -14,7 +14,7 @@ function populateLead(query) {
 }
 
 // @desc Create new lead
-const createLead = async (req, res) => {
+const createLead = async (req, res, next) => {
   try {
     const { name, email, phone, status, assignedTo } = req.body;
 
@@ -31,12 +31,12 @@ const createLead = async (req, res) => {
     res.locals.newEntityId = lead._id;
     res.status(201).json(populatedLead);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc Get all leads (admin gets all, others only their own)
-const getLeads = async (req, res) => {
+const getLeads = async (req, res, next) => {
   try {
     let query = req.user.role === "admin" ? {} : { createdBy: req.user._id };
     query = { ...query, ...buildSearchQuery(req.query) };
@@ -44,23 +44,23 @@ const getLeads = async (req, res) => {
     const leads = await populateLead(Lead.find(query));
     res.json(leads);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc Get single lead
-const getLeadById = async (req, res) => {
+const getLeadById = async (req, res, next) => {
   try {
     const lead = await populateLead(Lead.findById(req.params.id));
     if (!lead) return res.status(404).json({ message: "Lead not found" });
     res.json(lead);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc Update lead
-const updateLead = async (req, res) => {
+const updateLead = async (req, res, next) => {
   try {
     const lead = await populateLead(
       Lead.findByIdAndUpdate(req.params.id, req.body, { new: true })
@@ -68,12 +68,12 @@ const updateLead = async (req, res) => {
     if (!lead) return res.status(404).json({ message: "Lead not found" });
     res.json(lead);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc Delete lead (cascade delete tasks & notes)
-const deleteLead = async (req, res) => {
+const deleteLead = async (req, res, next) => {
   try {
     const lead = await Lead.findById(req.params.id);
     if (!lead) return res.status(404).json({ message: "Lead not found" });
@@ -89,12 +89,12 @@ const deleteLead = async (req, res) => {
 
     res.json({ message: "Lead and related tasks/notes deleted successfully" });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // @desc Convert lead → customer
-const convertLead = async (req, res) => {
+const convertLead = async (req, res, next) => {
   try {
     const lead = await Lead.findById(req.params.id);
     if (!lead) return res.status(404).json({ message: "Lead not found" });
@@ -113,7 +113,7 @@ const convertLead = async (req, res) => {
 
     res.json({ message: "Lead converted to customer successfully", customer });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 

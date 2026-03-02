@@ -7,7 +7,8 @@ const authorize = (roles = []) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    if (!roles.includes(req.user.role)) {
+    // if no roles specified, allow any authenticated user
+    if (roles.length && !roles.includes(req.user.role)) {
       return res.status(403).json({ message: 'Forbidden: Access denied' });
     }
     next();

@@ -13,25 +13,28 @@ const checkOwnership = require("../middleware/checkOwnership.js");
 const authorize = require("../middleware/authorize.js");
 const logAction = require("../middleware/activityLog.js");
 const Lead = require("../models/leadModel.js");
+const { validateCreateLead, validateUpdateLead, validateId } = require("../middleware/validation");
 
 const router = express.Router();
 
 router
   .route("/")
-  .post(protect, logAction("Lead", "created"), createLead)
+  .post(protect, validateCreateLead, logAction("Lead", "created"), createLead)
   .get(protect, getLeads);
 
 router
   .route("/:id")
-  .get(protect, getLeadById)
+  .get(protect, validateId, getLeadById)
   .put(
     protect,
+    validateUpdateLead,
     checkOwnership(Lead),
     logAction("Lead", "updated"),
     updateLead
   )
   .delete(
     protect,
+    validateId,
     checkOwnership(Lead),
     logAction("Lead", "deleted"),
     deleteLead
@@ -41,6 +44,7 @@ router
 router.post(
   "/:id/convert",
   protect,
+  validateId,
   checkOwnership(Lead),
   logAction("Lead", "converted"),
   convertLead

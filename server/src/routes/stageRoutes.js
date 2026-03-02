@@ -10,11 +10,12 @@ const {
 const protect = require('../middleware/protect');
 const authorize = require('../middleware/authorize');
 const logAction = require('../middleware/activityLog');
+const { validateCreateStage, validateUpdateStage, validateId } = require('../middleware/validation');
 
-router.post('/', protect, authorize(['admin']), logAction('Stage','created'), createStage);
+router.post('/', protect, authorize(['admin']), validateCreateStage, logAction('Stage','created'), createStage);
 router.get('/', protect, getStages);
-router.get('/:id', protect, getStageById);
-router.put('/:id', protect, authorize(['admin']),logAction('Stage','updated'), updateStage);
-router.delete('/:id', protect, authorize(['admin']), logAction('Stage','deleted'),deleteStage);
+router.get('/:id', protect, validateId, getStageById);
+router.put('/:id', protect, authorize(['admin']), validateUpdateStage, logAction('Stage','updated'), updateStage);
+router.delete('/:id', protect, authorize(['admin']), validateId, logAction('Stage','deleted'),deleteStage);
 
 module.exports = router;

@@ -12,6 +12,9 @@ const logAction = (entityType, action) => {
             entityType,
             entityId: req.params.id || (res.locals.newEntityId || null),
             details: `${action} ${entityType}`,
+            method: req.method,
+            url: req.originalUrl,
+            ip: req.ip
           });
           console.log(log);
         } catch (err) {

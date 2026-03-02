@@ -17,7 +17,7 @@ function populateDeal(query) {
 }
 
 // Create Deal
-exports.createDeal = async function (req, res) {
+exports.createDeal = async function (req, res, next) {
   try {
     // Always set createdBy to the logged-in user
     req.body.createdBy = req.user._id;
@@ -34,6 +34,10 @@ exports.createDeal = async function (req, res) {
     ]);
 
     if (!customer) return res.status(400).json({ error: "Invalid customer ID" });
+    // prevent creating a deal against someone else's customer
+    if (req.user.role !== 'admin' && customer && !customer.createdBy.equals(req.user._id)) {
+      return res.status(400).json({ error: "Cannot create deal for a customer you do not own" });
+    }
     if (!stage) return res.status(400).json({ error: "Invalid stage ID" });
     if (!assignedUser) return res.status(400).json({ error: "Invalid assigned user ID" });
 
@@ -42,12 +46,12 @@ exports.createDeal = async function (req, res) {
     res.locals.newEntityId = deal._id;
     res.status(201).json(populatedDeal);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 };
 
 // Get all Deals
-exports.getDeals = async function (req, res) {
+exports.getDeals = async function (req, res, next) {
   try {
     const baseQuery = req.user.role === "admin" ? {} : { createdBy: req.user._id };
     console.log();
@@ -68,23 +72,23 @@ exports.getDeals = async function (req, res) {
     const deals = await populateDeal(Deal.find(query));
     res.json(deals);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 };
 
 // Get single Deal
-exports.getDealById = async function (req, res) {
+exports.getDealById = async function (req, res, next) {
   try {
     const deal = await populateDeal(Deal.findById(req.params.id));
     if (!deal) return res.status(404).json({ error: "Deal not found" });
     res.json(deal);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 };
 
 // Update Deal
-exports.updateDeal = async function (req, res) {
+exports.updateDeal = async function (req, res, next) {
   try {
     const [customer, stage, assignedUser] = await Promise.all([
       req.body.customer ? Customer.findById(req.body.customer) : true,
@@ -92,6 +96,10 @@ exports.updateDeal = async function (req, res) {
       req.body.createdBy ? User.findById(req.body.createdBy) : true,
     ])    
     if (customer === null) return res.status(400).json({ error: "Invalid customer ID" });
+    // when changing customer ensure ownership
+    if (req.body.customer && req.user.role !== 'admin' && customer && !customer.createdBy.equals(req.user._id)) {
+      return res.status(400).json({ error: "Cannot assign deal to a customer you do not own" });
+    }
     if (stage === null) return res.status(400).json({ error: "Invalid stage ID" });
     if (assignedUser === null) return res.status(400).json({ error: "Invalid assigned user ID" });
     const updatedDeal = await populateDeal(
@@ -112,12 +120,12 @@ exports.updateDeal = async function (req, res) {
 
     res.json(updatedDeal);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 };
 
 // Delete Deal with cascade delete
-exports.deleteDeal = async function (req, res) {
+exports.deleteDeal = async function (req, res, next) {
   try {
     const deal = await Deal.findById(req.params.id);
     if (!deal) return res.status(404).json({ error: "Deal not found" });
@@ -138,6 +146,6 @@ exports.deleteDeal = async function (req, res) {
 
     res.json({ message: "Deal and related tasks/notes deleted successfully" });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 };

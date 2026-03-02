@@ -51,3 +51,14 @@ app.set('io', io)
 server.listen(port, ()=>{
     console.log(`Server running on port ${port}`);
 })
+
+// handle uncaught exceptions & unhandled rejections
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  process.exit(1);
+});
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // optionally close server & exit
+  server.close(() => process.exit(1));
+});

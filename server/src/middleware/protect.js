@@ -2,19 +2,33 @@ const jwt = require("jsonwebtoken")
 const User = require("../models/userModel")
 
 const protect = async (req, res, next) => {
-  let token = req.cookies.token; // Read token from cookie
-  // console.log(token);
-  
-  if (!token) {
-    return res.status(401).json({ message: "Not authorized, no token" });
-  }
   try {
+    // allow token from either cookie or Authorization header
+    let token;
+    if (req.cookies && req.cookies.token) {
+      token = req.cookies.token;
+    } else if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith("Bearer")
+    ) {
+      token = req.headers.authorization.split(" ")[1];
+    }
+
+    if (!token) {
+      return res.status(401).json({ message: "Not authorized, token missing" });
+    }
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findById(decoded.id).select("-password");
-    console.log("protect");
+    const user = await User.findById(decoded.id).select("-password");
+    if (!user) {
+      return res.status(401).json({ message: "Not authorized: user not found" });
+    }
+
+    req.user = user;
     next();
   } catch (error) {
-    return res.status(401).json({ message: error.message });
+    console.error("Protect middleware error:", error);
+    return res.status(401).json({ message: "Not authorized: " + error.message });
   }
 };
 

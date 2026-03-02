@@ -1,5 +1,6 @@
 const User = require("../models/userModel");
 const generateToken = require("../utils/generateToken");
+const { sendTemplate } = require('../services/emailService');
 
 // Cookie options
 const cookieOptions = {
@@ -10,7 +11,7 @@ const cookieOptions = {
 };
 
 // Register User
-const registerUser = async (req, res) => {
+const registerUser = async (req, res, next) => {
   try {
     const { name, email, password, role } = req.body;
 
@@ -23,6 +24,20 @@ const registerUser = async (req, res) => {
     // Create new user
     const user = await User.create({ name, email, password, role });
 
+    // send welcome email if template exists (silent failures)
+    try {
+      // look up a template named "Welcome" or by id stored in env
+      if (process.env.WELCOME_TEMPLATE_ID) {
+        await sendTemplate({
+          templateId: process.env.WELCOME_TEMPLATE_ID,
+          to: user.email,
+          variables: { name: user.name }
+        });
+      }
+    } catch (err) {
+      console.error('Failed to send welcome email:', err.message);
+    }
+
     // Generate token
     const token = generateToken(user._id);
 
@@ -31,6 +46,7 @@ const registerUser = async (req, res) => {
       .cookie("token", token, cookieOptions)
       .status(201)
       .json({
+        token, // include token in response for API clients
         _id: user._id,
         name: user.name,
         email: user.email,
@@ -38,30 +54,31 @@ const registerUser = async (req, res) => {
       });
 
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
 // Login User
-const loginUser = async (req, res) => {
+const loginUser = async (req, res, next) => {
   try {
     const { email, password } = req.body;
     // console.log(req.body);
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({ message: "Invalid email " });
+      return res.status(401).json({ message: "Incorrect email or Password" });
     }
     // console.log("currentPassword:", password);
     // console.log("user.password (hashed):", user.password);
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.status(400).json({ message: "password" });
+      return res.status(401).json({ message: "Incorrect email or Password" });
     }
     const token = generateToken(user._id);
 
     res
       .cookie("token", token, cookieOptions)
       .json({
+        token, // include token in response for API clients
         _id: user._id,
         name: user.name,
         email: user.email,
@@ -69,7 +86,7 @@ const loginUser = async (req, res) => {
       });
 
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
@@ -80,17 +97,21 @@ const logoutUser = (req, res) => {
     .json({ message: "Logged out successfully" });
 };
 
-const getMe = async (req, res) => {
-  if (!req.user) {
-    return res.status(401).json({ message: "Not authorized" });
-  }
+const getMe = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Not authorized" });
+    }
 
-  res.json({
-    _id: req.user._id,
-    name: req.user.name,
-    email: req.user.email,
-    role: req.user.role
-  });
+    res.json({
+      _id: req.user._id,
+      name: req.user.name,
+      email: req.user.email,
+      role: req.user.role
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 module.exports = {

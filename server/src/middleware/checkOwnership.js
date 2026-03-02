@@ -1,32 +1,41 @@
 const { default: mongoose } = require('mongoose');
-const Lead = require('../models/leadModel');
-const Note = require('../models/noteModel');
 
+// reusable ownership-check middleware
 const checkOwnership = (model) => async (req, res, next) => {
   try {
-    console.log("hello");
-    console.log(req.params.id);
-    
-     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(400).json({ message: "Invalid ID" });
+    const id = req.params.id;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      const err = new Error('Invalid ID');
+      err.statusCode = 400;
+      return next(err);
     }
-    const doc = await model.findById(req.params.id);
-    if (!doc) return res.status(404).json({ message: 'Resource not found' });
-    console.log(doc);
-    
+
+    const doc = await model.findById(id);
+    if (!doc) {
+      const err = new Error('Resource not found');
+      err.statusCode = 404;
+      return next(err);
+    }
+
+    // if document has createdBy field, enforce ownership/admin
     if (doc.createdBy) {
       if (req.user.role !== 'admin' && !doc.createdBy.equals(req.user._id)) {
-        return res.status(403).json({ message: 'Forbidden: Not allowed' });
+        const err = new Error('Forbidden: Not allowed');
+        err.statusCode = 403;
+        return next(err);
       }
     } else {
-      if (req.user.role !== 'admin' && req.user._id.toString() !== req.params.id.toString()) {
-        return res.status(403).json({ message: 'Forbidden: You can only modify your own profile' });
+      // for user objects, compare id to current user
+      if (req.user.role !== 'admin' && req.user._id.toString() !== id.toString()) {
+        const err = new Error('Forbidden: You can only modify your own profile');
+        err.statusCode = 403;
+        return next(err);
       }
     }
-    console.log("checked");
+
     next();
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 };
 

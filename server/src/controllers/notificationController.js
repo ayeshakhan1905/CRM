@@ -70,13 +70,15 @@ const markAsRead = asyncHandler(async (req, res) => {
   const notification = await Notification.findById(req.params.id);
 
   if (!notification) {
-    res.status(404);
-    throw new Error('Notification not found');
+    const err = new Error('Notification not found');
+    err.statusCode = 404;
+    throw err;
   }
 
   if (notification.user.toString() !== req.user._id.toString()) {
-    res.status(401);
-    throw new Error('Not authorized');
+    const err = new Error('Not authorized');
+    err.statusCode = 401;
+    throw err;
   }
 
   notification.isRead = true;
@@ -104,13 +106,15 @@ const deleteNotification = asyncHandler(async (req, res) => {
   const notification = await Notification.findById(req.params.id);
 
   if (!notification) {
-    res.status(404);
-    throw new Error('Notification not found');
+    const err = new Error('Notification not found');
+    err.statusCode = 404;
+    throw err;
   }
 
   if (notification.user.toString() !== req.user._id.toString()) {
-    res.status(401);
-    throw new Error('Not authorized');
+    const err = new Error('Not authorized');
+    err.statusCode = 401;
+    throw err;
   }
 
   await Notification.findByIdAndDelete(req.params.id);

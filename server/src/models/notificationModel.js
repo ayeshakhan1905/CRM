@@ -17,12 +17,12 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['info', 'success', 'warning', 'error', 'task', 'deal', 'lead', 'customer'],
+    enum: ['info', 'success', 'warning', 'error', 'task', 'deal', 'lead', 'customer', 'stage'],
     default: 'info'
   },
   relatedModel: {
     type: String,
-    enum: ['Task', 'Deal', 'Lead', 'Customer', 'User']
+    enum: ['Task', 'Deal', 'Lead', 'Customer', 'User', 'Stage']
   },
   relatedId: {
     type: mongoose.Schema.Types.ObjectId

@@ -12,11 +12,12 @@ const checkOwnership = require('../middleware/checkOwnership');
 const authorize = require('../middleware/authorize');
 const logAction = require('../middleware/activityLog');
 const Deal = require('../models/dealModel');
+const { validateCreateDeal, validateUpdateDeal, validateId } = require('../middleware/validation');
 
-router.post('/', protect, logAction('Deal', 'created') ,createDeal);
+router.post('/', protect, validateCreateDeal, logAction('Deal', 'created') ,createDeal);
 router.get('/', protect, getDeals);
-router.get('/:id', protect, getDealById);
-router.put('/:id', protect, checkOwnership(Deal), logAction('Deal','updated'), updateDeal);
-router.delete('/:id', protect, checkOwnership(Deal), logAction("Deal",'deleted') , deleteDeal);
+router.get('/:id', protect, validateId, getDealById);
+router.put('/:id', protect, validateUpdateDeal, checkOwnership(Deal), logAction('Deal','updated'), updateDeal);
+router.delete('/:id', protect, validateId, checkOwnership(Deal), logAction("Deal",'deleted') , deleteDeal);
 
 module.exports = router;
