@@ -39,39 +39,65 @@ exports.createTask = async (req, res) => {
 
     if (!refDoc) return res.status(404).json({ message: `${relatedModel} not found` });
 
-    const task = await Task.create({
+    // build create object, filtering out empty optional values
+    const taskData = {
       title,
       description,
-      dueDate,
       status: status || "pending",
       priority: priority || "medium",
       relatedModel,
       relatedTo: refId,
-      assignedTo,
       createdBy: req.user._id
-    });
+    };
+    if (dueDate) taskData.dueDate = dueDate;
+    if (assignedTo) taskData.assignedTo = assignedTo;
+
+    const task = await Task.create(taskData);
 
     refDoc.tasks.push(task._id);
     await refDoc.save();
 
-    // Emit real-time task assignment notification
-    const io = req.app.get('io');
-    if (io && assignedTo) {
-      io.emit('task-assigned', {
-        id: task._id,
-        title: task.title,
-        assignedTo: assignedTo,
-        assignedBy: req.user.name,
-        relatedModel,
-        relatedTo: refId
+    // Create notification for assigned user
+    if (assignedTo) {
+      const Notification = require('../models/notificationModel');
+      const notification = await Notification.create({
+        user: assignedTo,
+        title: 'New Task Assigned',
+        message: `You have been assigned a new task: "${task.title}"`,
+        type: 'task',
+        relatedModel: 'Task',
+        relatedId: task._id,
+        actionUrl: `/dashboard/tasks`
       });
+
+      // Emit real-time notification
+      const io = req.app.get('io');
+      if (io) {
+        io.to(assignedTo).emit('notification-created', {
+          _id: notification._id,
+          title: notification.title,
+          message: notification.message,
+          type: notification.type,
+          user: notification.user,
+          isRead: notification.isRead,
+          createdAt: notification.createdAt
+        });
+      }
     }
 
     res.locals.newEntityId = task._id;
     res.status(201).json(await task.populate("assignedTo createdBy"));
   } catch (error) {
     console.error("Error in createTask:", error);
-    res.status(500).json({ message: error.message });
+    let message = error.message;
+    if (error.name === 'ValidationError' && error.errors) {
+      // concatenate all validation error messages
+      message = Object.values(error.errors)
+        .map((e) => e.message)
+        .join('; ');
+    }
+    const statusCode = error.statusCode || 500;
+    res.status(statusCode).json({ message });
   }
 };
 
@@ -80,7 +106,15 @@ exports.getTasks = async (req, res) => {
     let query = buildSearchQuery(req.query);
 
     if (req.user.role !== "admin") {
-      query.createdBy = req.user._id;
+      // if client is filtering by a specific relatedModel/relatedTo (e.g. a deal page)
+      // allow all matching tasks regardless of who created/was assigned. Otherwise, restrict
+      // to tasks the user owns or is assigned to.
+      if (!(req.query.relatedModel && req.query.relatedTo)) {
+        query.$or = [
+          { createdBy: req.user._id },
+          { assignedTo: req.user._id }
+        ];
+      }
     }
 
     const tasks = await Task.find(query)
@@ -124,12 +158,45 @@ exports.updateTask = async (req, res) => {
       delete updateData.refId;
     }
 
+    // Get the current task before updating
+    const currentTask = await Task.findById(req.params.id);
+    if (!currentTask) return res.status(404).json({ message: "Task not found" });
+
     const task = await Task.findByIdAndUpdate(req.params.id, updateData, { new: true })
       .populate("assignedTo", "name email")
       .populate("createdBy", "name email")
       .populate("relatedTo");
 
     if (!task) return res.status(404).json({ message: "Task not found" });
+
+    // Check if assignedTo changed and create notification
+    if (updateData.assignedTo && updateData.assignedTo !== currentTask.assignedTo?.toString()) {
+      // Create database notification
+      const Notification = require('../models/notificationModel');
+      const notification = await Notification.create({
+        user: updateData.assignedTo,
+        title: 'Task Assigned',
+        message: `You have been assigned the task: "${task.title}"`,
+        type: 'task',
+        relatedModel: 'Task',
+        relatedId: task._id,
+        actionUrl: `/dashboard/tasks`
+      });
+
+      // Emit real-time notification
+      const io = req.app.get('io');
+      if (io) {
+        io.to(updateData.assignedTo).emit('notification-created', {
+          _id: notification._id,
+          title: notification.title,
+          message: notification.message,
+          type: notification.type,
+          user: notification.user,
+          isRead: notification.isRead,
+          createdAt: notification.createdAt
+        });
+      }
+    }
 
     res.json(task);
   } catch (error) {

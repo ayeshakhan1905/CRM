@@ -17,6 +17,7 @@ import Logs from "./pages/dashboard/Logs";
 import Notes from "./pages/dashboard/Notes";
 import Stages from "./pages/dashboard/Stages";
 import EmailTemplates from "./pages/dashboard/EmailTemplates";
+import NotificationHistory from "./pages/dashboard/NotificationHistory";
 import AdminRoute from "./components/AdminRoute";
 import Profile from "./pages/dashboard/Profile";
 import { ToastContainer } from 'react-toastify';
@@ -106,6 +107,7 @@ export default function App() {
           <Route path="notes" element={<Notes />} />
           <Route path="stages" element={<Stages />} />
           <Route path="email-templates" element={<EmailTemplates />} />
+          <Route path="notifications" element={<NotificationHistory />} />
         </Route>
       </Routes>
     </>

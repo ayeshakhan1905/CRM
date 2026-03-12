@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import socketService from "../services/socketService";
 import {
   fetchNotifications,
@@ -26,6 +27,7 @@ import {
 
 const Notifications = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { notifications, unreadCount, loading } = useSelector((state) => state.notifications);
   const [isOpen, setIsOpen] = useState(false);
   const [persistentNotifications, setPersistentNotifications] = useState([]);
@@ -160,7 +162,7 @@ const Notifications = () => {
     <div className="relative" ref={dropdownRef}>
       {/* Persistent Notification Banners */}
       {persistentNotifications.length > 0 && (
-        <div className="fixed top-20 right-4 z-50 space-y-2 max-w-sm">
+        <div className="fixed bottom-4 right-4 z-50 space-y-2 max-w-sm">
           {persistentNotifications.slice(0, 3).map((notification) => (
             <div
               key={notification._id}
@@ -249,12 +251,12 @@ const Notifications = () => {
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
                 <span className="ml-2 text-gray-600">Loading...</span>
               </div>
-            ) : notifications.length > 0 ? (
+            ) : notifications.filter(n => !n.isRead).length > 0 ? (
               <div className="divide-y divide-gray-100">
-                {notifications.map((notification) => (
+                {notifications.filter(n => !n.isRead).map((notification) => (
                   <div
                     key={notification._id}
-                    className={`p-4 hover:bg-gray-50 transition-colors ${!notification.isRead ? 'bg-blue-50/30' : ''}`}
+                    className={`p-4 hover:bg-gray-50 transition-colors bg-blue-50/30`}
                   >
                     <div className="flex items-start gap-3">
                       <div className={`p-2 rounded-lg ${getTypeColor(notification.type)}`}>
@@ -263,7 +265,7 @@ const Notifications = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <h4 className={`font-medium text-sm ${!notification.isRead ? 'text-gray-900' : 'text-gray-700'}`}>
+                            <h4 className={`font-medium text-sm text-gray-900`}>
                               {notification.title}
                             </h4>
                             <p className="text-sm text-gray-600 mt-1 line-clamp-2">
@@ -274,15 +276,13 @@ const Notifications = () => {
                             </p>
                           </div>
                           <div className="flex items-center gap-1 ml-2">
-                            {!notification.isRead && (
-                              <button
-                                onClick={() => handleMarkAsRead(notification._id)}
-                                className="p-1 text-blue-600 hover:text-blue-800 rounded"
-                                title="Mark as read"
-                              >
-                                <FiCheck className="text-sm" />
-                              </button>
-                            )}
+                            <button
+                              onClick={() => handleMarkAsRead(notification._id)}
+                              className="p-1 text-blue-600 hover:text-blue-800 rounded"
+                              title="Mark as read"
+                            >
+                              <FiCheck className="text-sm" />
+                            </button>
                             <button
                               onClick={() => handleDelete(notification._id)}
                               className="p-1 text-red-600 hover:text-red-800 rounded"
@@ -300,7 +300,7 @@ const Notifications = () => {
             ) : (
               <div className="flex flex-col items-center justify-center py-12 px-4">
                 <FiBell className="text-gray-400 text-3xl mb-3" />
-                <h4 className="font-medium text-gray-900 mb-1">No notifications</h4>
+                <h4 className="font-medium text-gray-900 mb-1">No new notifications</h4>
                 <p className="text-sm text-gray-600 text-center">
                   You're all caught up! New notifications will appear here.
                 </p>
@@ -309,16 +309,17 @@ const Notifications = () => {
           </div>
 
           {/* Footer */}
-          {notifications.length > 0 && (
-            <div className="p-3 border-t border-gray-200 bg-gray-50">
-              <button
-                onClick={() => setIsOpen(false)}
-                className="w-full text-center text-sm text-blue-600 hover:text-blue-800 font-medium"
-              >
-                View all notifications
-              </button>
-            </div>
-          )}
+          <div className="p-3 border-t border-gray-200 bg-gray-50">
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                navigate('/dashboard/notifications');
+              }}
+              className="w-full text-center text-sm text-blue-600 hover:text-blue-800 font-medium"
+            >
+              View all notifications
+            </button>
+          </div>
         </div>
       )}
     </div>

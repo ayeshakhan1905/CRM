@@ -52,12 +52,13 @@ describe('User endpoints', () => {
     expect(res.body.user).toHaveProperty('name', 'Primary Updated');
   });
 
-  test('Non-admin cannot fetch all users', async () => {
+  test('Sales user can fetch all users', async () => {
     const res = await request(app)
       .get('/api/users')
       .set('Authorization', `Bearer ${userToken}`);
 
-    expect(res.statusCode).toBe(403);
+    expect(res.statusCode).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
   });
 
   test('Admin can fetch all users', async () => {

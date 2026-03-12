@@ -56,13 +56,17 @@ const Notes = ({ relatedModel, relatedTo }) => {
       dispatch(updateNote({ id: editing, content })).then(() => {
         setEditing(null);
         setContent("");
+        dispatch(getNotes({ relatedModel: normalizedModel, relatedTo }));
       });
     } else {
       if (!canCreate) return;
-      dispatch(createNote({ content, relatedModel: normalizedModel, relatedTo })).then(() => {
-        setContent("");
-        setShowAddForm(false);
-      });
+      dispatch(createNote({ content, relatedModel: normalizedModel, relatedTo }))
+        .then(() => {
+          setContent("");
+          setShowAddForm(false);
+          // refresh notes to ensure list is up-to-date
+          dispatch(getNotes({ relatedModel: normalizedModel, relatedTo }));
+        });
     }
   };
 
@@ -234,24 +238,25 @@ const Notes = ({ relatedModel, relatedTo }) => {
 
                 {/* Note Metadata */}
                 <div className="flex items-center justify-between text-xs text-gray-500">
-                  <div className="flex items-center gap-4">
-                    {/* Related Entity */}
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {/* Related Entity Badge with Name */}
                     <div className="flex items-center gap-1">
                       <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getModelBadge(note.relatedModel)}`}>
                         <ModelIcon className="text-xs" />
                         {note.relatedModel}
+                        {note.relatedTo?.name && (
+                          <span className="ml-1 font-semibold">- {note.relatedTo.name}</span>
+                        )}
                       </span>
                     </div>
 
-                    {/* Author Info (Admin Only) */}
-                    {user?.role === "admin" && (
-                      <div className="flex items-center gap-1">
-                        <FiUser className="text-gray-400" />
-                        <span>
-                          {note.createdBy?.name || "Unknown"} ({note.createdBy?.role || "N/A"})
-                        </span>
-                      </div>
-                    )}
+                    {/* Author Info (For All Users) */}
+                    <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 rounded-full border border-blue-100">
+                      <FiUser className="text-blue-600" />
+                      <span className="text-blue-700 font-medium">
+                        by {note.createdBy?.name || "Unknown"}
+                      </span>
+                    </div>
 
                     {/* Timestamp */}
                     <div className="flex items-center gap-1">

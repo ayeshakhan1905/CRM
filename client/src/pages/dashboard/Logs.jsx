@@ -246,6 +246,7 @@ const Logs = () => {
                     type="date"
                     value={from}
                     onChange={(e) => setFrom(e.target.value)}
+                    max={new Date().toISOString().split('T')[0]}
                     className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 transition-all duration-200"
                   />
                 </div>
@@ -261,7 +262,13 @@ const Logs = () => {
                     type="date"
                     value={to}
                     onChange={(e) => setTo(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 transition-all duration-200"
+                    min={from || undefined}
+                    max={new Date().toISOString().split('T')[0]}
+                    disabled={!from}
+                    title={!from ? "Please select a From Date first" : ""}
+                    className={`w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 transition-all duration-200 ${
+                      !from ? "bg-gray-50 cursor-not-allowed opacity-60" : ""
+                    }`}
                   />
                 </div>
               </div>

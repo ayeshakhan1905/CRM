@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import Loading from "../Loading";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -7,7 +7,8 @@ import {
   updateDeal,
   deleteDeal,
 } from "../../redux/dealSlice";
-import { createTask } from "../../redux/taskSlice";
+import { createTask, fetchTasks } from "../../redux/taskSlice";
+import { fetchUsers } from "../../redux/userSlice";
 import socketService from "../../services/socketService";
 import {
   FiPlus,
@@ -37,6 +38,8 @@ import axios from "../../api/axios";
 const Deals = () => {
   const dispatch = useDispatch();
   const { deals, loading } = useSelector((state) => state.deals);
+  const { items: users = [], loading: usersLoading } = useSelector((state) => state.users || { items: [] });
+  const { tasks: allTasks = [] } = useSelector((state) => state.tasks || { tasks: [] });
 
   const [customers, setCustomers] = useState([]);
   const [stages, setStages] = useState([]);
@@ -68,6 +71,18 @@ const Deals = () => {
     const { name, value } = e.target;
     setTaskForm((prev) => ({ ...prev, [name]: value }));
   };
+
+  // filter tasks for currently viewed deal
+  const dealTasks = useMemo(() => {
+    if (!viewModal) return [];
+    return allTasks.filter((task) => {
+      const model = task.relatedModel?.toLowerCase?.() || task.type?.toLowerCase?.();
+      const relatedId = task.relatedTo?._id || task.relatedTo || task.refId;
+      const related = relatedId && String(relatedId) === String(viewModal._id);
+      console.log('Task filter debug:', { task_id: task._id, model, related, relatedId, viewModalId: viewModal._id });
+      return model === "deal" && related;
+    });
+  }, [allTasks, viewModal]);
   const handleTaskSubmit = async (e) => {
     e.preventDefault();
     if (!viewModal) return;
@@ -75,31 +90,33 @@ const Deals = () => {
       alert("Please enter a task title.");
       return;
     }
-    
-    try {
-      const result = await dispatch(createTask({
-        ...taskForm,
-        relatedModel: "Deal",
-        relatedTo: viewModal._id,
-      }));
 
-      // Create notification for the assigned user
-      if (taskForm.assignedTo && result.payload) {
-        try {
-          await axios.post('/notifications', {
-            userId: taskForm.assignedTo,
-            title: 'New Task Assigned',
-            message: `You have been assigned a new task: "${taskForm.title}" for deal "${viewModal.title}"`,
-            type: 'task',
-            relatedModel: 'Task',
-            relatedId: result.payload._id,
-            actionUrl: `/dashboard/tasks`
-          });
-        } catch (notificationError) {
-          console.error('Failed to create notification:', notificationError);
-        }
+    // build clean payload (prevent sending empty strings for optional fields)
+    const payload = {
+      title: taskForm.title,
+      type: "Deal",
+      refId: viewModal._id,
+    };
+    if (taskForm.description) payload.description = taskForm.description;
+    if (taskForm.dueDate) payload.dueDate = taskForm.dueDate;
+    if (taskForm.priority) payload.priority = taskForm.priority;
+    if (taskForm.assignedTo) payload.assignedTo = taskForm.assignedTo;
+
+    console.log('Submitting task payload', payload);
+
+    try {
+      const result = await dispatch(createTask(payload));
+      console.log('Task creation result:', result);
+      if (result.error) {
+        console.error('Task creation failed:', result.error);
       }
 
+      // re-fetch tasks for this deal so we always have full set regardless of permissions
+      if (viewModal) {
+        dispatch(fetchTasks({ relatedModel: 'Deal', relatedTo: viewModal._id }));
+      }
+
+      // Notification is now handled by the server
       setIsTaskModalOpen(false);
       setTaskForm({
         title: "",
@@ -115,6 +132,9 @@ const Deals = () => {
 
   useEffect(() => {
     dispatch(fetchDeals());
+    dispatch(fetchUsers());
+    // initial load of tasks (only those relevant to user)
+    dispatch(fetchTasks());
     const fetchOptions = async () => {
       try {
         const [custRes, stageRes] = await Promise.all([
@@ -129,6 +149,13 @@ const Deals = () => {
     };
     fetchOptions();
   }, [dispatch]);
+
+  // whenever we open or change the deal being viewed, pull its tasks explicitly
+  useEffect(() => {
+    if (viewModal) {
+      dispatch(fetchTasks({ relatedModel: 'Deal', relatedTo: viewModal._id }));
+    }
+  }, [dispatch, viewModal]);
 
   const handleOpenModal = (deal = null) => {
     if (deal) {
@@ -705,6 +732,7 @@ const Deals = () => {
                   </div>
                   <input
                     type="date"
+                    min={new Date().toISOString().split('T')[0]}
                     value={formData.closeDate}
                     onChange={(e) =>
                       setFormData({ ...formData, closeDate: e.target.value })
@@ -835,6 +863,41 @@ const Deals = () => {
                 </div>
               </div>
 
+              {/* Deal Tasks Section */}
+              <div className="bg-blue-50 rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <FiCheckSquare className="text-blue-600" />
+                  Deal Tasks
+                </h3>
+                {dealTasks.length === 0 ? (
+                  <p className="text-gray-500">No tasks for this deal.</p>
+                ) : (
+                  <ul className="space-y-3">
+                    {dealTasks.map((task) => (
+                      <li key={task._id} className="bg-white rounded-lg p-4 shadow flex flex-col gap-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-gray-900">{task.title}</span>
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${task.status === "completed" ? "bg-green-100 text-green-700" : task.status === "in-progress" ? "bg-blue-100 text-blue-700" : "bg-yellow-100 text-yellow-700"}`}>{task.status}</span>
+                        </div>
+                        {task.description && <p className="text-gray-600 text-sm">{task.description}</p>}
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <span>Due: {task.dueDate ? task.dueDate.split('T')[0] : "No due date"}</span>
+                          <span>Priority: {task.priority}</span>
+                          <span>Assigned: {task.assignedTo?.name || "Unassigned"}</span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <button
+                  onClick={() => setIsTaskModalOpen(true)}
+                  className="flex items-center gap-2 mt-6 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-medium shadow-md"
+                >
+                  <FiPlus className="text-sm" />
+                  Create Task
+                </button>
+              </div>
+
               {/* Notes Section */}
               <div className="bg-slate-50 rounded-xl p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -913,6 +976,7 @@ const Deals = () => {
                 <input
                   type="date"
                   name="dueDate"
+                  min={new Date().toISOString().split('T')[0]}
                   value={taskForm.dueDate}
                   onChange={handleTaskField}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
@@ -920,12 +984,13 @@ const Deals = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Priority
+                  Priority <span className="text-red-500">*</span>
                 </label>
                 <select
                   name="priority"
                   value={taskForm.priority}
                   onChange={handleTaskField}
+                  required
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white"
                 >
                   <option value="low">Low</option>
@@ -935,16 +1000,19 @@ const Deals = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Assign To (User ID)
+                  Assign To (User)
                 </label>
-                <input
-                  type="text"
+                <select
                   name="assignedTo"
-                  placeholder="Enter user ID (optional)"
                   value={taskForm.assignedTo}
                   onChange={handleTaskField}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
-                />
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white"
+                >
+                  <option value="">Select user</option>
+                  {users && users.map((user) => (
+                    <option key={user._id} value={user._id}>{user.name}</option>
+                  ))}
+                </select>
               </div>
               <div className="flex gap-3 pt-4">
                 <button

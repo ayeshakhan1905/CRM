@@ -58,7 +58,11 @@ const leadSlice = createSlice({
     loading: false,
     error: null,
   },
-  reducers: {},
+  reducers: {
+    clearError: (state) => {
+      state.error = null;
+    },
+  },
   extraReducers: (builder) => {
     builder
       // 🔹 Fetch
@@ -80,7 +84,7 @@ const leadSlice = createSlice({
         state.items.push(action.payload);
       })
       .addCase(addLead.rejected, (state, action) => {
-        state.error = action.payload;
+        // Do not set global error for add - handle in component popup
       })
 
       // 🔹 Update
@@ -112,4 +116,5 @@ const leadSlice = createSlice({
   },
 });
 
+export const { clearError } = leadSlice.actions;
 export default leadSlice.reducer;

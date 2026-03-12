@@ -5,7 +5,11 @@ const asyncHandler = require('express-async-handler');
 // @route   GET /api/email-templates
 // @access  Private
 const getEmailTemplates = asyncHandler(async (req, res) => {
-  const templates = await EmailTemplate.find({ createdBy: req.user._id })
+  let query = {};
+  if (req.user.role !== 'admin') {
+    query.createdBy = req.user._id;
+  }
+  const templates = await EmailTemplate.find(query)
     .sort({ createdAt: -1 });
 
   res.json(templates);
@@ -44,8 +48,8 @@ const updateEmailTemplate = asyncHandler(async (req, res) => {
     throw new Error('Template not found');
   }
 
-  // Check if user owns the template
-  if (template.createdBy.toString() !== req.user._id.toString()) {
+  // Check if user owns the template or is admin
+  if (req.user.role !== 'admin' && template.createdBy.toString() !== req.user._id.toString()) {
     res.status(401);
     throw new Error('Not authorized');
   }
@@ -70,8 +74,8 @@ const deleteEmailTemplate = asyncHandler(async (req, res) => {
     throw new Error('Template not found');
   }
 
-  // Check if user owns the template
-  if (template.createdBy.toString() !== req.user._id.toString()) {
+  // Check if user owns the template or is admin
+  if (req.user.role !== 'admin' && template.createdBy.toString() !== req.user._id.toString()) {
     res.status(401);
     throw new Error('Not authorized');
   }

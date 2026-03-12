@@ -7,7 +7,7 @@ const User = require("../models/userModel");
 
 const router = require("express").Router()
 
-router.get("/", protect, authorize(['admin']), getUsers);
+router.get("/", protect, authorize(['admin', 'sales']), getUsers);
 router.post("/", protect, authorize(['admin']), addUser);
 router.patch("/change-password", protect, changePassword);
 

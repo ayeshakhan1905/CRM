@@ -141,8 +141,10 @@ export default function DashHome() {
           Array.isArray(activityRes.data)
             ? activityRes.data.slice(0, 5).map((log) => ({
                 id: log._id,
-                text: log.action || log.description || log.entity || "Activity",
-                time: new Date(log.createdAt).toLocaleString(),
+                action: log.action || "Activity",
+                entity: log.entityType || "Item",
+                details: log.details || "",
+                timestamp: new Date(log.createdAt).toLocaleString(),
                 type: log.entityType || 'general'
               }))
             : []
@@ -464,20 +466,43 @@ export default function DashHome() {
               </div>
               
               <div className="space-y-4">
-                {recentActivity.map((item) => {
-                  const ActivityIcon = getActivityIcon(item.type);
-                  return (
-                    <div key={item.id} className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <ActivityIcon className="text-blue-600 text-sm" />
+                {(() => {
+                  const displayed = [...recentActivity];
+                  while (displayed.length < 3) {
+                    displayed.push({ id: `empty-${displayed.length}`, placeholder: true });
+                  }
+                  return displayed.map((item) => {
+                    if (item.placeholder) {
+                      return (
+                        <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg opacity-50">
+                          <div className="w-8 h-8 bg-gray-100 rounded-lg" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-gray-400 font-medium text-sm">No activity yet</p>
+                          </div>
+                        </div>
+                      );
+                    }
+                    const ActivityIcon = getActivityIcon(item.type);
+                    return (
+                      <div key={item.id} className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors border border-transparent hover:border-gray-200">
+                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <ActivityIcon className="text-blue-600 text-sm" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between w-full">
+                            <span className="inline-block px-2 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded capitalize">{item.action}</span>
+                            <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs font-semibold rounded">{item.entity}</span>
+                          </div>
+                          <div className="flex items-center justify-between w-full">{item.details && (
+                            <p className="text-gray-700 text-xs mt-1">{item.details}</p>
+                          )}
+                          <p className="text-gray-500 text-xs mt-1">{item.timestamp}</p>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-gray-900 font-medium text-sm">{item.text}</p>
-                        <p className="text-gray-500 text-xs mt-1">{item.time}</p>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </div>
               
               {/* View All Activities Button */}

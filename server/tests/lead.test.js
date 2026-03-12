@@ -124,4 +124,54 @@ describe('Lead endpoints', () => {
 
     expect(res.statusCode).toBe(403);
   });
+
+  test('Update lead - duplicate email fails', async () => {
+    // Create first lead with email
+    const create1 = await request(app)
+      .post('/api/leads')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ name: 'Lead One', email: 'unique@example.com' });
+    const lead1Id = create1.body._id || create1.body.id;
+
+    // Create second lead
+    const create2 = await request(app)
+      .post('/api/leads')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ name: 'Lead Two' });
+    const lead2Id = create2.body._id || create2.body.id;
+
+    // Try to update second lead with first lead's email
+    const res = await request(app)
+      .put(`/api/leads/${lead2Id}`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ email: 'unique@example.com' });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.message).toBe('Email already exists for another lead');
+  });
+
+  test('Update lead - duplicate phone fails', async () => {
+    // Create first lead with phone
+    const create1 = await request(app)
+      .post('/api/leads')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ name: 'Lead One', phone: '1234567890' });
+    const lead1Id = create1.body._id || create1.body.id;
+
+    // Create second lead
+    const create2 = await request(app)
+      .post('/api/leads')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ name: 'Lead Two' });
+    const lead2Id = create2.body._id || create2.body.id;
+
+    // Try to update second lead with first lead's phone
+    const res = await request(app)
+      .put(`/api/leads/${lead2Id}`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ phone: '1234567890' });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.message).toBe('Phone already exists for another lead');
+  });
 });

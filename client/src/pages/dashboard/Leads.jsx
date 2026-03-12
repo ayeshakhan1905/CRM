@@ -8,6 +8,7 @@ import {
   updateLead,
   deleteLead,
   convertLead,
+  clearError,
 } from "../../redux/leadSlice";
 import { fetchUsers } from "../../redux/userSlice";
 import { createTask, fetchTasks } from "../../redux/taskSlice";
@@ -46,6 +47,7 @@ export default function Leads() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showConvertModal, setShowConvertModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -82,20 +84,30 @@ export default function Leads() {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleAdd = () => {
-    dispatch(addLead(formData)).then(() => {
+  const handleAdd = async () => {
+    try {
+      await dispatch(addLead(formData)).unwrap();
       resetForm();
+      setErrorMessage("");
       setShowAddModal(false);
-    });
+      toast.success("Lead added successfully");
+    } catch (err) {
+      setErrorMessage(err || "Failed to add lead");
+    }
   };
 
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (!selectedLead) return;
-    dispatch(updateLead({ id: selectedLead._id, data: formData })).then(() => {
+    try {
+      await dispatch(updateLead({ id: selectedLead._id, data: formData })).unwrap();
       resetForm();
+      setErrorMessage("");
       setSelectedLead(null);
       setShowEditModal(false);
-    });
+      toast.success("Lead updated successfully");
+    } catch (err) {
+      setErrorMessage(err || "Failed to update lead");
+    }
   };
 
   const handleDelete = () => {
@@ -117,6 +129,7 @@ export default function Leads() {
       phone: lead.phone || "",
       status: lead.status || "warm",
     });
+    setErrorMessage("");
     setShowEditModal(true);
   };
 
@@ -201,21 +214,7 @@ export default function Leads() {
       const result = await dispatch(createTask(payload)).unwrap();
 
       // Create notification for the assigned user
-      if (taskForm.assignedTo && result) {
-        try {
-          await axios.post('/notifications', {
-            userId: taskForm.assignedTo,
-            title: 'New Task Assigned',
-            message: `You have been assigned a new task: "${taskForm.title}" for lead "${selectedLead.name}"`,
-            type: 'task',
-            relatedModel: 'Task',
-            relatedId: result._id,
-            actionUrl: `/dashboard/tasks`
-          });
-        } catch (notificationError) {
-          console.error('Failed to create notification:', notificationError);
-        }
-      }
+      // Notification is now handled by the server
 
       setIsTaskModalOpen(false);
       setTaskForm({
@@ -259,7 +258,10 @@ export default function Leads() {
               </div>
             </div>
             <button
-              onClick={() => setShowAddModal(true)}
+              onClick={() => {
+                dispatch(clearError());
+                setShowAddModal(true);
+              }}
               className="flex items-center justify-center gap-3 bg-gradient-to-r from-orange-600 to-red-600 text-white px-6 py-3 rounded-xl hover:from-orange-700 hover:to-red-700 transition-all duration-200 shadow-lg hover:shadow-xl font-medium"
             >
               <FiPlus className="text-lg" />
@@ -354,21 +356,6 @@ export default function Leads() {
               </select>
             </div>
           </div>
-
-          {/* Error Message */}
-          {error && (
-            <div className="bg-red-50/80 backdrop-blur-sm rounded-xl p-6 shadow-sm border border-red-200/60 mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                  <FiX className="text-red-600 text-lg" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-red-900">Error Loading Leads</h3>
-                  <p className="text-red-700 text-sm">{error}</p>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Enhanced Leads Table */}
           {filteredLeads.length > 0 ? (
@@ -530,7 +517,10 @@ export default function Leads() {
                   </div>
                 </div>
                 <button
-                  onClick={() => setShowAddModal(false)}
+                  onClick={() => {
+                    setShowAddModal(false);
+                    setErrorMessage("");
+                  }}
                   className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                 >
                   <FiX className="text-xl" />
@@ -539,6 +529,19 @@ export default function Leads() {
             </div>
 
             <div className="p-6 space-y-6">
+              {errorMessage && (
+                <div className="bg-red-50/80 rounded-xl p-4 border border-red-200">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <FiX className="text-red-600 text-lg" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-red-900">Error</h3>
+                      <p className="text-red-700 text-sm">{errorMessage}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
               {formFields.map((field) => (
                 <div key={field.name}>
                   <label className="block text-sm font-medium text-gray-700 mb-2 capitalize">
@@ -579,10 +582,22 @@ export default function Leads() {
 
               <div className="flex gap-3 pt-4">
                 <button
-                  onClick={() => setShowAddModal(false)}
+                  onClick={() => {
+                    setShowAddModal(false);
+                    setErrorMessage("");
+                  }}
                   className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors duration-200 font-medium"
                 >
                   Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    resetForm();
+                    setErrorMessage("");
+                  }}
+                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors duration-200 font-medium"
+                >
+                  Clear
                 </button>
                 <button
                   onClick={handleAdd}
@@ -621,6 +636,19 @@ export default function Leads() {
             </div>
 
             <div className="p-6 space-y-6">
+              {errorMessage && (
+                <div className="bg-red-50/80 rounded-xl p-4 border border-red-200">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <FiX className="text-red-600 text-lg" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-red-900">Error</h3>
+                      <p className="text-red-700 text-sm">{errorMessage}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
               {formFields.map((field) => (
                 <div key={field.name}>
                   <label className="block text-sm font-medium text-gray-700 mb-2 capitalize">
@@ -665,6 +693,21 @@ export default function Leads() {
                   className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors duration-200 font-medium"
                 >
                   Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (selectedLead) {
+                      setFormData({
+                        name: selectedLead.name || "",
+                        email: selectedLead.email || "",
+                        phone: selectedLead.phone || "",
+                        status: selectedLead.status || "warm",
+                      });
+                    }
+                  }}
+                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors duration-200 font-medium"
+                >
+                  Reset
                 </button>
                 <button
                   onClick={handleEdit}
@@ -892,6 +935,7 @@ export default function Leads() {
                 <input
                   type="date"
                   name="dueDate"
+                  min={new Date().toISOString().split('T')[0]}
                   value={taskForm.dueDate}
                   onChange={handleTaskField}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"

@@ -18,6 +18,21 @@ const createLead = async (req, res, next) => {
   try {
     const { name, email, phone, status, assignedTo } = req.body;
 
+    // Check if lead with same email or phone already exists
+    if (email) {
+      const existingEmailLead = await Lead.findOne({ email });
+      if (existingEmailLead) {
+        return res.status(400).json({ message: "Lead already exists" });
+      }
+    }
+
+    if (phone) {
+      const existingPhoneLead = await Lead.findOne({ phone });
+      if (existingPhoneLead) {
+        return res.status(400).json({ message: "Lead already exists" });
+      }
+    }
+
     const lead = await Lead.create({
       name,
       email,
@@ -62,6 +77,24 @@ const getLeadById = async (req, res, next) => {
 // @desc Update lead
 const updateLead = async (req, res, next) => {
   try {
+    const { email, phone } = req.body;
+
+    // Check if updating email and it already exists in another lead
+    if (email) {
+      const existingEmailLead = await Lead.findOne({ email, _id: { $ne: req.params.id } });
+      if (existingEmailLead) {
+        return res.status(400).json({ message: "Email already exists for another lead" });
+      }
+    }
+
+    // Check if updating phone and it already exists in another lead
+    if (phone) {
+      const existingPhoneLead = await Lead.findOne({ phone, _id: { $ne: req.params.id } });
+      if (existingPhoneLead) {
+        return res.status(400).json({ message: "Phone already exists for another lead" });
+      }
+    }
+
     const lead = await populateLead(
       Lead.findByIdAndUpdate(req.params.id, req.body, { new: true })
     );

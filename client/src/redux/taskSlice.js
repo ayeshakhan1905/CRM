@@ -2,10 +2,11 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "../api/axios";
 
-// Fetch all tasks
-export const fetchTasks = createAsyncThunk("tasks/fetchTasks", async (_, thunkAPI) => {
+// Fetch tasks (optional query parameters)
+// `query` may contain filters like { relatedModel: 'Deal', relatedTo: id }
+export const fetchTasks = createAsyncThunk("tasks/fetchTasks", async (query = {}, thunkAPI) => {
   try {
-    const res = await axios.get("/task");
+    const res = await axios.get("/task", { params: query });
     return res.data;
   } catch (err) {
     return thunkAPI.rejectWithValue(err.response.data.message);

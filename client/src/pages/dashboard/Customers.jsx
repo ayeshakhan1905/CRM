@@ -12,7 +12,8 @@ import {
   fetchDeals, // used to show deals under customer and refresh after create
 } from "../../redux/dealSlice";
 import { fetchStages } from "../../redux/stageSlice";
-import { createTask } from "../../redux/taskSlice";
+import { fetchUsers } from "../../redux/userSlice";
+import { createTask, fetchTasks } from "../../redux/taskSlice";
 import axios from "../../api/axios";
 import {
   FiPlus,
@@ -49,6 +50,8 @@ const Customers = () => {
     loading: stagesLoading,
     error: stagesError,
   } = useSelector((state) => state.stages || { items: [] });
+  const { items: users = [], loading: usersLoading } = useSelector((state) => state.users || { items: [] });
+  const { tasks: allTasks = [] } = useSelector((state) => state.tasks || { tasks: [] });
 
   // --- Modal states ---
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -98,6 +101,8 @@ const Customers = () => {
     dispatch(fetchCustomers());
     dispatch(fetchDeals());
     dispatch(fetchStages());
+    dispatch(fetchUsers());
+    dispatch(fetchTasks());
   }, [dispatch]);
 
   // --- Handlers: Customer ---
@@ -235,30 +240,30 @@ const Customers = () => {
       return;
     }
 
-    try {
-      const result = await dispatch(createTask({
-        ...taskForm,
-        relatedModel: 'Customer',
-        relatedTo: selectedCustomer._id,
-      }));
+    // build clean payload
+    const payload = {
+      title: taskForm.title,
+      type: 'Customer',
+      refId: selectedCustomer._id,
+    };
+    if (taskForm.description) payload.description = taskForm.description;
+    if (taskForm.dueDate) payload.dueDate = taskForm.dueDate;
+    if (taskForm.priority) payload.priority = taskForm.priority;
+    if (taskForm.assignedTo) payload.assignedTo = taskForm.assignedTo;
 
-      // Create notification for the assigned user
-      if (taskForm.assignedTo && result.payload) {
-        try {
-          await axios.post('/notifications', {
-            userId: taskForm.assignedTo,
-            title: 'New Task Assigned',
-            message: `You have been assigned a new task: "${taskForm.title}" for customer "${selectedCustomer.name}"`,
-            type: 'task',
-            relatedModel: 'Task',
-            relatedId: result.payload._id,
-            actionUrl: `/dashboard/tasks`
-          });
-        } catch (notificationError) {
-          console.error('Failed to create notification:', notificationError);
-        }
+    console.log('Customer task payload', payload);
+
+    try {
+      const result = await dispatch(createTask(payload));
+      console.log('Customer task creation', result);
+      if (result.error) console.error('Task creation failed', result.error);
+
+      // re-fetch tasks for this customer
+      if (selectedCustomer) {
+        dispatch(fetchTasks({ relatedModel: 'Customer', relatedTo: selectedCustomer._id }));
       }
 
+      // Notification is now handled by the server
       setIsTaskModalOpen(false);
       setTaskForm({
         title: "",
@@ -291,6 +296,18 @@ const Customers = () => {
       return id === selectedCustomer._id;
     });
   }, [deals, selectedCustomer]);
+
+  // filter tasks for customer view
+  const customerTasks = useMemo(() => {
+    if (!selectedCustomer) return [];
+    return allTasks.filter((task) => {
+      const model = task.relatedModel?.toLowerCase?.() || task.type?.toLowerCase?.();
+      const relatedId = task.relatedTo?._id || task.relatedTo || task.refId;
+      const related = relatedId && String(relatedId) === String(selectedCustomer._id);
+      console.log('Customer task filter', { task_id: task._id, model, related, relatedId, customerId: selectedCustomer._id });
+      return model === "customer" && related;
+    });
+  }, [allTasks, selectedCustomer]);
 
   const stageOptions = useMemo(() => {
     const arr = Array.isArray(stages) ? [...stages] : [];
@@ -652,13 +669,6 @@ const Customers = () => {
                     <FiPlus className="text-sm" />
                     Add Deal
                   </button>
-                  <button
-                    onClick={() => setIsTaskModalOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-medium shadow-md ml-2"
-                  >
-                    <FiPlus className="text-sm" />
-                    Create Task
-                  </button>
                 </div>
                 
                 {dealsLoading ? (
@@ -704,6 +714,41 @@ const Customers = () => {
                     <p className="text-sm">Create your first deal for this customer</p>
                   </div>
                 )}
+              </div>
+
+              {/* Customer Tasks Section */}
+              <div className="bg-blue-50 rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <FiCheckSquare className="text-blue-600" />
+                  Customer Tasks
+                </h3>
+                {customerTasks.length === 0 ? (
+                  <p className="text-gray-500">No tasks for this customer.</p>
+                ) : (
+                  <ul className="space-y-3">
+                    {customerTasks.map((task) => (
+                      <li key={task._id} className="bg-white rounded-lg p-4 shadow flex flex-col gap-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-gray-900">{task.title}</span>
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${task.status === "completed" ? "bg-green-100 text-green-700" : task.status === "in-progress" ? "bg-blue-100 text-blue-700" : "bg-yellow-100 text-yellow-700"}`}>{task.status}</span>
+                        </div>
+                        {task.description && <p className="text-gray-600 text-sm">{task.description}</p>}
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <span>Due: {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "No due date"}</span>
+                          <span>Priority: {task.priority}</span>
+                          <span>Assigned: {task.assignedTo?.name || "Unassigned"}</span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <button
+                  onClick={() => setIsTaskModalOpen(true)}
+                  className="flex items-center gap-2 mt-6 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-medium shadow-md"
+                >
+                  <FiPlus className="text-sm" />
+                  Create Task
+                </button>
               </div>
 
               {/* Notes Section */}
@@ -842,6 +887,7 @@ const Customers = () => {
                     <input
                       type="date"
                       name="expectedCloseDate"
+                      min={new Date().toISOString().split('T')[0]}
                       value={dealForm.expectedCloseDate}
                       onChange={handleDealField}
                       className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 transition-all duration-200"
@@ -959,17 +1005,21 @@ const Customers = () => {
                 <input
                   type="date"
                   name="dueDate"
+                  min={new Date().toISOString().split('T')[0]}
                   value={taskForm.dueDate}
                   onChange={handleTaskField}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Priority <span className="text-red-500">*</span>
+                </label>
                 <select
                   name="priority"
                   value={taskForm.priority}
                   onChange={handleTaskField}
+                  required
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white"
                 >
                   <option value="low">Low</option>
@@ -978,15 +1028,18 @@ const Customers = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Assign To (User ID)</label>
-                <input
-                  type="text"
+                <label className="block text-sm font-medium text-gray-700 mb-2">Assign To (User)</label>
+                <select
                   name="assignedTo"
-                  placeholder="Enter user ID (optional)"
                   value={taskForm.assignedTo}
                   onChange={handleTaskField}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
-                />
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white"
+                >
+                  <option value="">Select user</option>
+                  {users && users.map((user) => (
+                    <option key={user._id} value={user._id}>{user.name}</option>
+                  ))}
+                </select>
               </div>
               <div className="flex gap-3 pt-4">
                 <button

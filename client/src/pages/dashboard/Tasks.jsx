@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchTasks, createTask, updateTask, deleteTask } from "../../redux/taskSlice";
+import { fetchUsers } from "../../redux/userSlice";
+import { fetchLeads } from "../../redux/leadSlice";
 import {
   FiCheckSquare,
   FiEdit2,
@@ -28,7 +30,7 @@ import LoadingDemo from "../Loading";
 const Tasks = () => {
   const dispatch = useDispatch();
   const { tasks, loading, error } = useSelector((state) => state.tasks);
-  const users = useSelector((state) => state.users?.users || []);
+  const { items: users = [], loading: usersLoading, error: usersError } = useSelector((state) => state.users || { items: [] });
   const leads = useSelector((state) => state.leads?.items || []);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -47,6 +49,8 @@ const Tasks = () => {
 
   useEffect(() => {
     dispatch(fetchTasks());
+    dispatch(fetchUsers());
+    dispatch(fetchLeads());
   }, [dispatch]);
 
   // Helper functions for icons/badges
@@ -108,6 +112,8 @@ const Tasks = () => {
   };
 
   // Filtering
+  const filtersActive = statusFilter !== "all" || priorityFilter !== "all";
+
   const filteredTasks = tasks?.filter((task) => {
     const matchesSearch = task.title.toLowerCase().includes(search.toLowerCase()) ||
       task.description?.toLowerCase().includes(search.toLowerCase());
@@ -131,7 +137,7 @@ const Tasks = () => {
     if ((task.type?.toLowerCase?.() === "lead" || task.relatedModel?.toLowerCase?.() === "lead") && (task.refId || task.relatedTo)) {
       const leadId = task.refId || task.relatedTo;
       const lead = leads.find(l => l._id === leadId);
-      return lead ? lead.name : "Lead";
+      return lead ? lead.name : null;
     }
     return null;
   };
@@ -232,13 +238,27 @@ const Tasks = () => {
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all duration-200"
                 />
-                {search && (
-                  <button
-                    onClick={() => setSearch("")}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  >
-                    <FiX className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  </button>
+                {(search || filtersActive) && (
+                  <div className="absolute inset-y-0 right-0 flex items-center gap-2 pr-3">
+                    {filtersActive && (
+                      <button
+                        onClick={() => { setStatusFilter("all"); setPriorityFilter("all"); }}
+                        title="Clear filters"
+                        className="flex items-center"
+                      >
+                        <FiFilter className="h-5 w-5 text-blue-500" />
+                      </button>
+                    )}
+                    {search && (
+                      <button
+                        onClick={() => setSearch("")}
+                        title="Clear search"
+                        className="flex items-center"
+                      >
+                        <FiX className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
               
@@ -375,8 +395,7 @@ const Tasks = () => {
                             <div className="flex items-center gap-2">
                               <TypeIcon className="text-gray-400 text-sm" />
                               <span className="text-sm text-gray-900">
-                                {task.relatedModel || task.type}
-                                {getLeadName(task) ? `: ${getLeadName(task)}` : ""}
+                                {getLeadName(task) || (task.relatedModel ? task.relatedModel.charAt(0).toUpperCase() + task.relatedModel.slice(1).toLowerCase() : task.type)}
                               </span>
                             </div>
                           </td>
@@ -482,6 +501,7 @@ const Tasks = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
                   <input
                     type="date"
+                    min={new Date().toISOString().split('T')[0]}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     value={editForm.dueDate}
                     onChange={e => setEditForm({ ...editForm, dueDate: e.target.value })}
@@ -518,12 +538,18 @@ const Tasks = () => {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   value={editForm.assignedTo || ""}
                   onChange={e => setEditForm({ ...editForm, assignedTo: e.target.value })}
+                  disabled={usersLoading}
                 >
-                  <option value="">Unassigned</option>
-                  {users.map(user => (
+                  <option value="">
+                    {usersLoading ? "Loading users..." : usersError ? "Error loading users" : "Unassigned"}
+                  </option>
+                  {!usersLoading && !usersError && users.map(user => (
                     <option key={user._id} value={user._id}>{user.name}</option>
                   ))}
                 </select>
+                {usersError && (
+                  <p className="text-red-500 text-sm mt-1">Failed to load users: {usersError}</p>
+                )}
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button

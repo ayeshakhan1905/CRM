@@ -29,7 +29,7 @@ import {
 export default function Users() {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
-  const users = useSelector((state) => state.users.list);
+  const users = useSelector((state) => state.users.items);
   const error = useSelector((state) => state.users.error);
   const loading = useSelector((state) => state.users.loading);
   const [isModalOpen, setIsModalOpen] = useState(false);

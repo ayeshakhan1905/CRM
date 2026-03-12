@@ -17,6 +17,7 @@ import {
   FiMenu,
   FiX,
   FiMail,
+  FiBell,
 } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { logoutUser } from "../../redux/authSlice";
@@ -151,6 +152,43 @@ export default function DashboardLayout() {
               </NavLink>
             ))}
           </nav>
+        </div>
+
+        {/* Notifications Section - Above Sign Out */}
+        <div className="flex-shrink-0 px-3 py-4 border-t border-slate-700/50">
+          <NavLink
+            to="notifications"
+            className={({ isActive }) =>
+              `group flex items-center gap-3 mx-1 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden ${
+                isActive
+                  ? "bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-white shadow-lg border border-blue-400/20"
+                  : "text-slate-300 hover:text-white hover:bg-slate-700/40"
+              }`
+            }
+          >
+            {({ isActive }) => (
+              <>
+                {isActive && (
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-400 to-indigo-500 rounded-r-full" />
+                )}
+                <FiBell
+                  className={`text-lg flex-shrink-0 transition-all duration-200 ${
+                    isActive ? "text-blue-400" : "group-hover:text-blue-300"
+                  }`}
+                />
+                <span
+                  className={`font-medium transition-all duration-200 ${
+                    sidebarOpen ? "block" : "hidden"
+                  } ${isActive ? "text-white" : ""}`}
+                >
+                  Notifications
+                </span>
+                {isActive && sidebarOpen && (
+                  <div className="ml-auto w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
+                )}
+              </>
+            )}
+          </NavLink>
         </div>
 
         {/* Bottom Section - Fixed */}

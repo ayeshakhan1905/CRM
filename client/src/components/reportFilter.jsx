@@ -10,6 +10,7 @@ const ReportFilters = () => {
 
   const [users, setUsers] = useState([]);
   const [localFilters, setLocalFilters] = useState(filters);
+  const [error, setError] = useState('');
 
   // 🔹 Fetch users for dropdown (only if admin)
   useEffect(() => {
@@ -26,10 +27,31 @@ const ReportFilters = () => {
   }, [user]);
 
   const handleChange = (e) => {
-    setLocalFilters({ ...localFilters, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    // clear any previous error when user changes date fields
+    if (name === 'from' || name === 'to') {
+      setError('');
+    }
+    setLocalFilters({ ...localFilters, [name]: value });
   };
 
   const applyFilters = () => {
+    // validate date range
+    const today = new Date().toISOString().split('T')[0];
+    const { from, to } = localFilters;
+    if (from && from > today) {
+      setError('"From" date cannot be in the future');
+      return;
+    }
+    if (to && to > today) {
+      setError('"To" date cannot be in the future');
+      return;
+    }
+    if (from && to && from > to) {
+      setError('"From" date must be earlier than or equal to "To" date');
+      return;
+    }
+
     dispatch(setFilters(localFilters));
     dispatch(fetchReports(localFilters));
   };
@@ -49,6 +71,7 @@ const ReportFilters = () => {
         <input
           type="date"
           name="from"
+          max={new Date().toISOString().split('T')[0]}
           value={localFilters.from || ""}
           onChange={handleChange}
           className="border rounded px-2 py-1 w-full"
@@ -61,6 +84,7 @@ const ReportFilters = () => {
         <input
           type="date"
           name="to"
+          max={new Date().toISOString().split('T')[0]}
           value={localFilters.to || ""}
           onChange={handleChange}
           className="border rounded px-2 py-1 w-full"
@@ -103,11 +127,19 @@ const ReportFilters = () => {
         </div>
       )}
 
+      {/* validation error message */}
+      {error && (
+        <div className="w-full text-red-600 text-sm mb-2">
+          {error}
+        </div>
+      )}
+
       {/* Buttons */}
       <div className="flex gap-2">
         <button
           onClick={applyFilters}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          disabled={!!error}
+          className={`bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 ${error ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           Apply
         </button>

@@ -149,7 +149,8 @@ exports.getConversionRates = async (req, res) => {
 // Recent activity (last 10 actions)
 exports.getRecentActivity = async (req, res) => {
   try {
-    const recent = await Log.find({ user: req.user._id })
+    // query logs by creator, not "user" field (schema uses createdBy)
+    const recent = await Log.find({ createdBy: req.user._id })
       .sort({ createdAt: -1 })
       .limit(10);
 

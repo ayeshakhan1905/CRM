@@ -98,7 +98,7 @@ export const changePassword = createAsyncThunk(
 const usersSlice = createSlice({
   name: "users",
   initialState: {
-    list: [],
+    items: [],
     loading: false,
     error: null,
     successMessage: null, // ✅ added to show password change success
@@ -117,7 +117,7 @@ const usersSlice = createSlice({
       })
       .addCase(fetchUsers.fulfilled, (state, action) => {
         state.loading = false;
-        state.list = action.payload;
+        state.items = action.payload;
       })
       .addCase(fetchUsers.rejected, (state, action) => {
         state.loading = false;
@@ -132,7 +132,7 @@ const usersSlice = createSlice({
       })
       .addCase(addUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.list.push(action.payload);
+        state.items.push(action.payload);
       })
       .addCase(addUser.rejected, (state, action) => {
         state.loading = false;
