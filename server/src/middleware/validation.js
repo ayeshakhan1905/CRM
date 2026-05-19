@@ -125,9 +125,9 @@ const validateCreateDeal = [
     .trim()
     .notEmpty().withMessage('Deal title is required')
     .isLength({ min: 3 }).withMessage('Title must be at least 3 characters'),
-  body('customer')
-    .notEmpty().withMessage('Customer ID is required')
-    .isMongoId().withMessage('Invalid customer ID'),
+  body('customers')
+    .isArray({ min: 1 }).withMessage('At least one customer is required')
+    .custom(customers => customers.every(id => /^[0-9a-fA-F]{24}$/.test(id))).withMessage('Invalid customer ID format'),
   body('stage')
     .notEmpty().withMessage('Stage is required')
     .isMongoId().withMessage('Invalid stage ID'),
@@ -150,7 +150,9 @@ const validateCreateDeal = [
 const validateUpdateDeal = [
   param('id').isMongoId().withMessage('Invalid deal ID'),
   body('title').optional().trim().isLength({ min: 3 }).withMessage('Title must be at least 3 characters'),
-  body('customer').optional().isMongoId().withMessage('Invalid customer ID'),
+  body('customers').optional()
+    .isArray({ min: 1 }).withMessage('At least one customer is required')
+    .custom(customers => customers.every(id => /^[0-9a-fA-F]{24}$/.test(id))).withMessage('Invalid customer ID format'),
   body('stage').optional().isMongoId().withMessage('Invalid stage ID'),
   body('value').optional().isNumeric().withMessage('Value must be a number').custom(v => v >= 0).withMessage('Value must be positive'),
   body('closeDate').optional().isISO8601().withMessage('Invalid date format'),

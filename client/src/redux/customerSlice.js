@@ -19,9 +19,9 @@ export const createCustomer = createAsyncThunk(
 // Get all Customers
 export const fetchCustomers = createAsyncThunk(
   "customers/fetchCustomers",
-  async (_, { rejectWithValue }) => {
+  async (filters = {}, { rejectWithValue }) => {
     try {
-      const res = await axios.get("/customer");
+      const res = await axios.get("/customer", { params: filters });
       return res.data;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || err.message);

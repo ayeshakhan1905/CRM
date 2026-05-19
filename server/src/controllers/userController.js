@@ -114,6 +114,43 @@ const deleteUser = async (req, res) => {
   }
 };
 
+// 🔹 Get activity summary for a user (admin only)
+const getUserActivity = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { from, to, range } = req.query;
+
+    // import date filter logic from reportController or reimplement
+    const { buildDateFilter } = require("./reportController");
+    const dateFilter = buildDateFilter(from, to, range);
+
+    const leadFilter = { createdBy: id };
+    if (dateFilter) leadFilter.createdAt = dateFilter;
+    const leadsAdded = await require("../models/leadModel").countDocuments(leadFilter);
+
+    const leadsConvertedFilter = { createdBy: id, customer: { $exists: true, $ne: null } };
+    if (dateFilter) leadsConvertedFilter.createdAt = dateFilter;
+    const leadsConverted = await require("../models/leadModel").countDocuments(leadsConvertedFilter);
+
+    const custFilter = { createdBy: id };
+    if (dateFilter) custFilter.createdAt = dateFilter;
+    const customersAdded = await require("../models/customerModel").countDocuments(custFilter);
+
+    const dealFilter = { createdBy: id };
+    if (dateFilter) dealFilter.createdAt = dateFilter;
+    const dealsAdded = await require("../models/dealModel").countDocuments(dealFilter);
+
+    res.json({
+      leadsAdded,
+      leadsConverted,
+      customersAdded,
+      dealsAdded,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // ✅ Upload profile picture
 const uploadProfilePicture = async (req, res) => {
   try {
@@ -148,4 +185,4 @@ const deleteProfilePicture = async (req, res) => {
   }
 };
 
-module.exports = { getUsers, getUserById, addUser, updateUser, deleteUser, changePassword, uploadProfilePicture, deleteProfilePicture };
+module.exports = { getUsers, getUserById, addUser, updateUser, deleteUser, changePassword, uploadProfilePicture, deleteProfilePicture, getUserActivity };

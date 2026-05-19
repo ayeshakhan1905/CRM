@@ -1,7 +1,7 @@
 const request = require('supertest');
 const app = require('../src/app');
 
-let userToken, userId, otherUserId, adminToken;
+let userToken, userId, otherUserId, otherToken, adminToken;
 
 beforeAll(async () => {
   // create primary user
@@ -19,6 +19,10 @@ beforeAll(async () => {
     .post('/api/auth/register')
     .send({ name: 'Other User', email: 'other@example.com', password: 'Password1' });
   otherUserId = res2.body._id || res2.body.id;
+  const login2b = await request(app)
+    .post('/api/auth/login')
+    .send({ email: 'other@example.com', password: 'Password1' });
+  otherToken = login2b.body.token;
 
   // create admin user
   const res3 = await request(app)
@@ -79,5 +83,24 @@ describe('User endpoints', () => {
       .send({ name: 'Hacked Name' });
 
     expect(res.statusCode).toBe(403);
+  });
+
+  test('Admin can fetch activity summary for a user', async () => {
+    // create some activity under otherUserId as that user
+    await request(app)
+      .post('/api/leads')
+      .set('Authorization', `Bearer ${otherToken}`)
+      .send({ name: 'ActivityLead' });
+
+    const res = await request(app)
+      .get(`/api/users/${otherUserId}/activity`)
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toHaveProperty('leadsAdded');
+    expect(typeof res.body.leadsAdded).toBe('number');
+    expect(res.body).toHaveProperty('leadsConverted');
+    expect(res.body).toHaveProperty('customersAdded');
+    expect(res.body).toHaveProperty('dealsAdded');
   });
 });

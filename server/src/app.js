@@ -21,13 +21,19 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
+// Body parsing middleware
+app.use(express.json());
+app.use(express.urlencoded({extended : true}));
+
 app.use(cookieParser()); 
-app.use(cors({
-    origin: "http://localhost:5173",
-    credentials : true
-}))
-app.use(express.json())
-app.use(express.urlencoded({extended : true}))
+const corsOptions = {
+  origin: "http://localhost:5173",
+  credentials: true,
+  methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  optionsSuccessStatus: 200,
+};
+app.use(cors(corsOptions));
 
 const authRoutes = require("./routes/authRoutes.js");
 

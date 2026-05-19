@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Loading from "../Loading";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -28,6 +29,7 @@ import {
 
 export default function Users() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
   const users = useSelector((state) => state.users.items);
   const error = useSelector((state) => state.users.error);
@@ -299,6 +301,13 @@ export default function Users() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => navigate(`/dashboard/users/${u._id}/activity`)}
+                              className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-all duration-150"
+                              title="View Activity"
+                            >
+                              <FiEye className="text-lg" />
+                            </button>
                             <button
                               onClick={() => handleEdit(u)}
                               className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-all duration-150"

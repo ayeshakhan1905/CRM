@@ -13,6 +13,9 @@ exports.buildSearchQuery = (req, baseQuery = {}, searchFields = []) => {
 
   // Specific field filters
   Object.keys(rest).forEach(key => {
+    // if baseQuery already specifies a value for this key, skip regex override
+    if (query.hasOwnProperty(key)) return;
+
     if (rest[key] && rest[key].trim() !== "") {
       query[key] = { $regex: rest[key], $options: "i" };
     }

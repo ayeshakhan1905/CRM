@@ -1,4 +1,4 @@
-const { getUsers, addUser, getUserById, updateUser, deleteUser, changePassword, uploadProfilePicture, deleteProfilePicture } = require("../controllers/userController");
+const { getUsers, addUser, getUserById, updateUser, deleteUser, changePassword, uploadProfilePicture, deleteProfilePicture, getUserActivity } = require("../controllers/userController");
 const authorize = require("../middleware/authorize");
 const checkOwnership = require("../middleware/checkOwnership");
 const protect = require("../middleware/protect");
@@ -17,6 +17,7 @@ router.delete("/profile-picture", protect, deleteProfilePicture);
 
 // Admin or Owner
 router.get("/:id", protect, checkOwnership(User), getUserById);
+router.get("/:id/activity", protect, authorize(['admin']), getUserActivity); // new endpoint for admin user activity
 router.put("/:id", protect, checkOwnership(User), updateUser);
 router.delete("/:id", protect, checkOwnership(User), deleteUser);
 

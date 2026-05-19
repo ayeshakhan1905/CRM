@@ -18,6 +18,7 @@ import {
   FiX,
   FiMail,
   FiBell,
+  FiActivity,
 } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
 import { logoutUser } from "../../redux/authSlice";
@@ -42,6 +43,7 @@ export default function DashboardLayout() {
     { to: "customers", icon: FiUserCheck, label: "Customers" },
     { to: "deals", icon: FiBriefcase, label: "Deals" },
     { to: "leads", icon: FiTrendingUp, label: "Leads" },
+    { to: "activity", icon: FiActivity, label: "Activity" },
     { to: "logs", icon: FiClipboard, label: "Activity Logs" },
     { to: "notes", icon: FiBook, label: "Notes" },
     { to: "email-templates", icon: FiMail, label: "Email Templates" },

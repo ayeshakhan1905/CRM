@@ -18,8 +18,10 @@ import Notes from "./pages/dashboard/Notes";
 import Stages from "./pages/dashboard/Stages";
 import EmailTemplates from "./pages/dashboard/EmailTemplates";
 import NotificationHistory from "./pages/dashboard/NotificationHistory";
+import UserActivity from "./pages/dashboard/UserActivity";
 import AdminRoute from "./components/AdminRoute";
 import Profile from "./pages/dashboard/Profile";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import socketService from './services/socketService';
@@ -73,43 +75,51 @@ export default function App() {
         draggable
         pauseOnHover
       />
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/login" element={<Login />} />
-        {/* <Route path="/register" element={<Register />} /> */}
-        <Route path="/" element={<Home />} />
+      <ErrorBoundary>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/login" element={<Login />} />
+          {/* <Route path="/register" element={<Register />} /> */}
+          <Route path="/" element={<Home />} />
 
-        {/* Protected Dashboard Routes */}
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
-              <DashboardLayout />
-            </ProtectedRoute>
-          }
-        >
-          {/* default index (when you only hit /dashboard) */}
-          <Route index element={<DashHome />} />
+          {/* Protected Dashboard Routes */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }
+          >
+            {/* default index (when you only hit /dashboard) */}
+            <Route index element={<DashHome />} />
 
-          <Route path="home" element={<DashHome />} />
-          <Route path="users" element={
-            <AdminRoute>
-              <Users/>
-            </AdminRoute>
-          } />
-          <Route path="profile" element={<Profile/>}/>
-          <Route path="tasks" element={<Tasks />} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="customers" element={<Customers />} />
-          <Route path="deals" element={<Deals />} />
-          <Route path="leads" element={<Leads />} />
-          <Route path="logs" element={<Logs />} />
-          <Route path="notes" element={<Notes />} />
-          <Route path="stages" element={<Stages />} />
-          <Route path="email-templates" element={<EmailTemplates />} />
-          <Route path="notifications" element={<NotificationHistory />} />
-        </Route>
-      </Routes>
+            <Route path="home" element={<DashHome />} />
+            <Route path="users" element={
+              <AdminRoute>
+                <Users/>
+              </AdminRoute>
+            } />
+            <Route path="users/:id/activity" element={
+              <AdminRoute>
+                <UserActivity />
+              </AdminRoute>
+            } />
+            <Route path="activity" element={<UserActivity />} />
+            <Route path="profile" element={<Profile/>}/>
+            <Route path="tasks" element={<Tasks />} />
+            <Route path="reports" element={<Reports />} />
+            <Route path="customers" element={<Customers />} />
+            <Route path="deals" element={<Deals />} />
+            <Route path="leads" element={<Leads />} />
+            <Route path="logs" element={<Logs />} />
+            <Route path="notes" element={<Notes />} />
+            <Route path="stages" element={<Stages />} />
+            <Route path="email-templates" element={<EmailTemplates />} />
+            <Route path="notifications" element={<NotificationHistory />} />
+          </Route>
+        </Routes>
+      </ErrorBoundary>
     </>
   );
 }

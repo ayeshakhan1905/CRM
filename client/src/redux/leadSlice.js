@@ -2,9 +2,9 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "../api/axios"; // your axios instance
 
 // 🔹 Fetch all leads
-export const fetchLeads = createAsyncThunk("leads/fetchAll", async (_, thunkAPI) => {
+export const fetchLeads = createAsyncThunk("leads/fetchAll", async (filters = {}, thunkAPI) => {
   try {
-    const res = await axios.get("/leads");
+    const res = await axios.get("/leads", { params: filters });
     return res.data;
   } catch (err) {
     return thunkAPI.rejectWithValue(err.response?.data?.message || "Failed to fetch leads");
@@ -42,9 +42,13 @@ export const deleteLead = createAsyncThunk("leads/delete", async (id, thunkAPI) 
 });
 
 // 🔹 Convert lead → customer
-export const convertLead = createAsyncThunk("leads/convert", async (id, thunkAPI) => {
+export const convertLead = createAsyncThunk("leads/convert", async ({ id, dealId }, thunkAPI) => {
   try {
-    const res = await axios.post(`/leads/${id}/convert`);
+    const res = await axios.post(`/leads/${id}/convert`, { dealId }, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
     return { id, customer: res.data.customer }; // return lead id + new customer
   } catch (err) {
     return thunkAPI.rejectWithValue(err.response?.data?.message || "Failed to convert lead");

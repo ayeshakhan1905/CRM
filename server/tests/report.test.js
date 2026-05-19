@@ -26,10 +26,11 @@ beforeAll(async () => {
 describe('Report endpoints', () => {
   test('Generates report for own data', async () => {
     // create a lead and a deal
-    await request(app)
+    const leadRes = await request(app)
       .post('/api/leads')
       .set('Authorization', `Bearer ${userToken}`)
       .send({ name: 'RepLead' });
+    const leadId = leadRes.body._id;
 
     const cust = await request(app)
       .post('/api/customer')
@@ -50,7 +51,7 @@ describe('Report endpoints', () => {
     await request(app)
       .post('/api/deals')
       .set('Authorization', `Bearer ${userToken}`)
-      .send({ title: 'RepDeal', customer: custId, stage: stageId, value: 100 });
+      .send({ title: 'RepDeal', customer: custId, stage: stageId, value: 100, lead: leadId });
 
     const res = await request(app)
       .get('/api/reports')
@@ -58,6 +59,11 @@ describe('Report endpoints', () => {
     expect(res.statusCode).toBe(200);
     expect(res.body).toHaveProperty('success', true);
     expect(res.body.data).toHaveProperty('totalLeads');
+    // new metrics added
+    expect(res.body.data).toHaveProperty('leadsConverted');
+    expect(typeof res.body.data.leadsConverted).toBe('number');
+    expect(res.body.data).toHaveProperty('totalCustomers');
+    expect(typeof res.body.data.totalCustomers).toBe('number');
   });
 
   test('Date filters work on report', async () => {

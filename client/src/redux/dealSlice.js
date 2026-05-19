@@ -3,9 +3,9 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "../api/axios";
 
 // --- Async Thunks ---
-export const fetchDeals = createAsyncThunk("deals/fetchAll", async (_, thunkAPI) => {
+export const fetchDeals = createAsyncThunk("deals/fetchAll", async (filters = {}, thunkAPI) => {
   try {
-    const res = await axios.get("/deals");
+    const res = await axios.get("/deals", { params: filters });
     return res.data;
   } catch (err) {
     return thunkAPI.rejectWithValue(err.response?.data?.message || "Failed to fetch deals");

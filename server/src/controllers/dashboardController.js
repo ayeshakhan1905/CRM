@@ -4,6 +4,7 @@ const Customer = require('../models/customerModel');
 const Task = require('../models/taskModel');
 const Note = require('../models/noteModel');
 const Log = require('../models/logModel');
+const User = require('../models/userModel');
 
 // Get total counts for main entities
 exports.getCounts = async (req, res) => {
@@ -11,7 +12,7 @@ exports.getCounts = async (req, res) => {
     const isAdmin = req.user?.role === "admin";
     const userFilter = isAdmin ? {} : { createdBy: req.user._id };
 
-    const [leads, deals, customers, tasks, notes, dealsByStage] =
+    const [leads, deals, customers, tasks, notes, dealsByStage, users] =
       await Promise.all([
         Lead.countDocuments(userFilter),
         Deal.countDocuments(userFilter),
@@ -27,6 +28,7 @@ exports.getCounts = async (req, res) => {
             },
           },
         ]),
+        User.countDocuments({ role: { $in: ["admin", "sales"] } }),
       ]);
 
     // Convert aggregation to nicer object { stageName: count }
@@ -42,6 +44,7 @@ exports.getCounts = async (req, res) => {
       tasks,
       notes,
       dealsByStage: stageCounts,
+      users: isAdmin ? users : undefined,
     });
   } catch (error) {
     res.status(500).json({ message: "Server error", error });

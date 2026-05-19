@@ -1,7 +1,7 @@
 require("dotenv").config()
 
 const app = require("./src/app")
-const port = process.env.PORT || 3000
+const port = process.env.PORT || 3001
 const http = require('http')
 const { Server } = require('socket.io')
 
@@ -47,6 +47,20 @@ io.on('connection', (socket) => {
 
 // Make io available to routes
 app.set('io', io)
+
+server.on('error', (error) => {
+  if (error.syscall !== 'listen') {
+    throw error
+  }
+
+  const bind = typeof port === 'string' ? `Pipe ${port}` : `Port ${port}`
+  if (error.code === 'EADDRINUSE') {
+    console.error(`${bind} is already in use. Stop the other process or choose a different PORT.`)
+    process.exit(1)
+  }
+
+  throw error
+})
 
 server.listen(port, ()=>{
     console.log(`Server running on port ${port}`);

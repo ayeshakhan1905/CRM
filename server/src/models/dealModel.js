@@ -4,10 +4,13 @@ var dealSchema = new mongoose.Schema({
     title: { type: String, required: true },
 
     // Relationships
-    customer: { 
+    customers: [{ 
         type: mongoose.Schema.Types.ObjectId, 
-        ref: 'Customer', 
-        required: true 
+        ref: 'Customer'
+    }],
+    customer: {  // Keep for backward compatibility with old data
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Customer'
     },
     lead: { 
         type: mongoose.Schema.Types.ObjectId, 

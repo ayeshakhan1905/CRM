@@ -28,18 +28,20 @@ const createCustomer = async (req, res, next) => {
 const getCustomers = async (req, res, next) => {
   try {
     // Restrict non-admin users
-    // console.log("hello");
     const baseQuery = req.user.role !== "admin" 
       ? { createdBy: req.user._id }
       : {};
 
+    // allow explicit filtering by creator when admin
+    if (req.query.createdBy && req.user.role === "admin") {
+      baseQuery.createdBy = req.query.createdBy;
+    }
+
     // Build dynamic filters
     const query = buildSearchQuery(req, baseQuery, ["name", "email"]);
-    // console.log("query -> ", query);
     
     const customers = await Customer.find(query)
       .populate("createdBy", "name email");
-
     // Fetch tasks & notes for each customer
     const customersWithLinks = await Promise.all(
       customers.map(async (customer) => {

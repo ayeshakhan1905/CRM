@@ -1,6 +1,7 @@
 // src/components/Customers.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useLocation } from "react-router-dom";
 import {
   fetchCustomers,
   createCustomer,
@@ -96,14 +97,21 @@ const Customers = () => {
   const [search, setSearch] = useState("");
   const [submittingDeal, setSubmittingDeal] = useState(false);
 
-  // --- Initial loads ---
+  // --- Initial loads (with optional filtering via query params) ---
+  const location = useLocation();
+
   useEffect(() => {
-    dispatch(fetchCustomers());
-    dispatch(fetchDeals());
+    const params = new URLSearchParams(location.search);
+    const filters = {};
+    for (const [key, value] of params.entries()) {
+      filters[key] = value;
+    }
+    dispatch(fetchCustomers(filters));
+    dispatch(fetchDeals(filters));
     dispatch(fetchStages());
     dispatch(fetchUsers());
     dispatch(fetchTasks());
-  }, [dispatch]);
+  }, [dispatch, location.search]);
 
   // --- Handlers: Customer ---
   const handleCustomerField = (e) => {
@@ -292,8 +300,9 @@ const Customers = () => {
   const customerDeals = useMemo(() => {
     if (!selectedCustomer || !deals) return [];
     return deals.filter((d) => {
-      const id = typeof d.customer === "object" ? d.customer?._id : d.customer;
-      return id === selectedCustomer._id;
+      // Check if customer is in the customers array
+      const customerIds = d.customers?.map(c => typeof c === "object" ? c?._id : c) || [];
+      return customerIds.includes(selectedCustomer._id);
     });
   }, [deals, selectedCustomer]);
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import Loading from "../Loading";
 import { useDispatch, useSelector } from "react-redux";
+import { useLocation } from "react-router-dom";
 import {
   fetchDeals,
   createDeal,
@@ -43,6 +44,7 @@ const Deals = () => {
 
   const [customers, setCustomers] = useState([]);
   const [stages, setStages] = useState([]);
+  const [leads, setLeads] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewModal, setViewModal] = useState(null);
   const [search, setSearch] = useState("");
@@ -55,6 +57,7 @@ const Deals = () => {
     stage: "",
     closeDate: "",
     status: "In Progress",
+    lead: "",
   });
   const [editId, setEditId] = useState(null);
 
@@ -130,25 +133,34 @@ const Deals = () => {
     }
   };
 
+  const location = useLocation();
+
   useEffect(() => {
-    dispatch(fetchDeals());
+    const params = new URLSearchParams(location.search);
+    const filters = {};
+    for (const [key, value] of params.entries()) {
+      filters[key] = value;
+    }
+    dispatch(fetchDeals(filters));
     dispatch(fetchUsers());
     // initial load of tasks (only those relevant to user)
     dispatch(fetchTasks());
     const fetchOptions = async () => {
       try {
-        const [custRes, stageRes] = await Promise.all([
+        const [custRes, stageRes, leadsRes] = await Promise.all([
           axios.get("/customer"),
           axios.get("/stages"),
+          axios.get("/leads"),
         ]);
         setCustomers(custRes.data);
         setStages(stageRes.data);
+        setLeads(leadsRes.data);
       } catch (err) {
-        console.error("Failed to fetch customers or stages", err);
+        console.error("Failed to fetch customers, stages, or leads", err);
       }
     };
     fetchOptions();
-  }, [dispatch]);
+  }, [dispatch, location.search]);
 
   // whenever we open or change the deal being viewed, pull its tasks explicitly
   useEffect(() => {
@@ -162,20 +174,22 @@ const Deals = () => {
       setFormData({
         title: deal.title,
         value: deal.value,
-        customer: deal.customer?._id || "",
+        customers: deal.customers?.map(c => typeof c === 'object' ? c._id : c) || [],
         stage: deal.stage?._id || "",
         closeDate: deal.closeDate ? deal.closeDate.split("T")[0] : "",
         status: deal.status,
+        lead: deal.lead?._id || "",
       });
       setEditId(deal._id);
     } else {
       setFormData({
         title: "",
         value: "",
-        customer: "",
+        customers: [],
         stage: "",
         closeDate: "",
         status: "In Progress",
+        lead: "",
       });
       setEditId(null);
     }
@@ -226,10 +240,16 @@ const Deals = () => {
     return styles[status] || styles["In Progress"];
   };
 
+  const getCustomerName = (customer) => {
+    if (!customer) return "Unknown";
+    if (typeof customer === "object") return customer.name || customer.email || customer._id || "Unknown";
+    return customer;
+  };
+
   const filteredDeals = deals?.filter((deal) => {
     const matchesSearch =
       deal.title.toLowerCase().includes(search.toLowerCase()) ||
-      deal.customer?.name?.toLowerCase().includes(search.toLowerCase());
+      deal.customers?.some(c => getCustomerName(c).toLowerCase().includes(search.toLowerCase()));
     const matchesStatus =
       statusFilter === "all" || deal.status === statusFilter;
     const matchesStage =
@@ -502,15 +522,27 @@ const Deals = () => {
 
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                          <FiUser className="text-blue-600 text-sm" />
+                          <FiUsers className="text-blue-600 text-sm" />
                         </div>
                         <div>
                           <p className="text-xs text-gray-500 uppercase font-medium">
-                            Customer
+                            Customers
                           </p>
-                          <p className="text-sm font-medium text-gray-900">
-                            {deal.customer?.name || "No customer"}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            {(() => {
+                              const customerCount = deal.customers?.length || (deal.customer ? 1 : 0);
+                              return (
+                                <>
+                                  <span className="inline-flex items-center justify-center min-w-6 h-6 bg-blue-600 text-white text-xs font-bold rounded-full">
+                                    {customerCount}
+                                  </span>
+                                  <span className="text-sm font-medium text-gray-600">
+                                    {customerCount > 0 ? `customer${customerCount > 1 ? 's' : ''}` : 'None'}
+                                  </span>
+                                </>
+                              );
+                            })()}
+                          </div>
                         </div>
                       </div>
 
@@ -724,6 +756,26 @@ const Deals = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Link to Lead <span className="text-gray-500">(Optional)</span>
+                </label>
+                <select
+                  value={formData.lead}
+                  onChange={(e) =>
+                    setFormData({ ...formData, lead: e.target.value })
+                  }
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all duration-200 bg-white"
+                >
+                  <option value="">No lead linked</option>
+                  {leads.map((lead) => (
+                    <option key={lead._id} value={lead._id}>
+                      {lead.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Expected Close Date
                 </label>
                 <div className="relative">
@@ -823,11 +875,25 @@ const Deals = () => {
                     Relationship Details
                   </h3>
                   <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Customer:</span>
-                      <span className="font-semibold text-gray-900">
-                        {viewModal.customer?.name || "No customer"}
-                      </span>
+                    <div className="flex flex-col gap-2">
+                      <span className="text-gray-600">Customer{viewModal.customers?.length > 1 || (viewModal.customers?.length === 1) ? 's' : ''}:</span>
+                      <div className="space-y-1">
+                        {viewModal.customers && viewModal.customers.length > 0 ? (
+                          viewModal.customers.map((customer, idx) => (
+                            <div key={idx} className="flex items-center gap-2 font-semibold text-gray-900">
+                              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                              {getCustomerName(customer)}
+                            </div>
+                          ))
+                        ) : viewModal.customer ? (
+                          <div className="flex items-center gap-2 font-semibold text-gray-900">
+                            <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                            {getCustomerName(viewModal.customer)}
+                          </div>
+                        ) : (
+                          <p className="text-gray-500 italic">No customers assigned</p>
+                        )}
+                      </div>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-gray-600">Stage:</span>

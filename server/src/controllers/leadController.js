@@ -1,6 +1,7 @@
 const Lead = require("../models/leadModel");
 const Task = require("../models/taskModel");
 const Note = require("../models/noteModel");
+const Deal = require("../models/dealModel.js");
 const Customer = require("../models/customerModel"); // ✅ new
 const { buildSearchQuery } = require("../utils/buildSearchQueries");
 
@@ -53,8 +54,23 @@ const createLead = async (req, res, next) => {
 // @desc Get all leads (admin gets all, others only their own)
 const getLeads = async (req, res, next) => {
   try {
-    let query = req.user.role === "admin" ? {} : { createdBy: req.user._id };
-    query = { ...query, ...buildSearchQuery(req.query) };
+    // start with default restrictions
+    const baseQuery = req.user.role === "admin" ? {} : { createdBy: req.user._id };
+
+    // allow explicit filtering by user or assignee when admin
+    if (req.query.createdBy) {
+      baseQuery.createdBy = req.query.createdBy;
+    }
+    if (req.query.assignedTo) {
+      baseQuery.assignedTo = req.query.assignedTo;
+    }
+
+    // if caller specifically wants only converted leads (customer populated), add filter
+    if (req.query.converted === "true") {
+      baseQuery.customer = { $exists: true, $ne: null };
+    }
+    // build full query (buildSearchQuery will respect baseQuery and not overwrite it)
+    const query = buildSearchQuery(req, baseQuery);
 
     const leads = await populateLead(Lead.find(query));
     res.json(leads);
@@ -129,8 +145,22 @@ const deleteLead = async (req, res, next) => {
 // @desc Convert lead → customer
 const convertLead = async (req, res, next) => {
   try {
+    console.log('Convert lead request body:', req.body); // Debug logging
+    const { dealId } = req.body;
+    if (!dealId) {
+      return res.status(400).json({ message: "Deal ID is required for conversion" });
+    }
+
     const lead = await Lead.findById(req.params.id);
     if (!lead) return res.status(404).json({ message: "Lead not found" });
+
+    const deal = await Deal.findById(dealId);
+    if (!deal) return res.status(404).json({ message: "Deal not found" });
+
+    // Ensure the deal belongs to the lead or can be associated
+    if (deal.lead && deal.lead.toString() !== lead._id.toString()) {
+      return res.status(400).json({ message: "Deal does not belong to this lead" });
+    }
 
     // Create new customer from lead details
     const customer = await Customer.create({
@@ -140,6 +170,9 @@ const convertLead = async (req, res, next) => {
       createdBy: req.user._id,
       assignedTo: lead.assignedTo || null,
     });
+
+    // Update the deal to add the new customer to the customers array
+    await Deal.findByIdAndUpdate(dealId, { $push: { customers: customer._id } });
 
     // Optional: Remove or mark the lead as converted
     await lead.deleteOne();
